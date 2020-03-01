@@ -3,6 +3,10 @@ title: "Money Ball - Data 621 Project 1"
 author: "Jack Russo, Javern Wilson, Joseph Simone, Anthony Munoz, Paul Perez"
 date: "03-01-2020"
 output:
+  pdf_document:
+    df_print: tibble
+    toc: true
+    toc_depth: 2
   html_document:
     df_print: paged
     toc: true
@@ -11,10 +15,6 @@ output:
       smooth_scroll: true
     theme: yeti
     highlight: pygments
-  pdf_document:
-    df_print: tibble
-    toc: true
-    toc_depth: 2
 ---
 
 **Overview**
@@ -22,7 +22,7 @@ output:
 In this homework assignment, we will explore, analyze and model a data set containing approximately 2200 records. This analysis attempts to predict the number of wins for the teams. Each record represents a professional baseball team from the years 1871 to 2006 inclusive. Each record has the performance of the team for the given year, with all of the statistics adjusted to match the performance of a 162 game season.
 
 ```{r include = FALSE}
-#knitr::opts_chunk$set(echo=FALSE)
+knitr::opts_chunk$set(echo=FALSE)
 ```
 
 
@@ -698,6 +698,6 @@ head(eval_data, 30)
 
 ## Appendix
 
-Rcode: [Github]()
+Rcode: [Github](https://github.com/Anth350z/Data_621/blob/master/DATA621_Project_1_Rmd.rmd)
 
-Predicted Wins: [Github]()
+Predicted Wins: [Github](https://github.com/Anth350z/Data_621/blob/master/moneyball_preds.csv)
