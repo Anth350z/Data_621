@@ -701,3 +701,7 @@ head(eval_data, 30)
 Rcode: [Github](https://github.com/Anth350z/Data_621/blob/master/DATA621_Project_1_Rmd.rmd)
 
 Predicted Wins: [Github](https://github.com/Anth350z/Data_621/blob/master/moneyball_preds.csv)
+
+HTML View: [nbviewer](https://nbviewer.jupyter.org/github/Anth350z/Data_621/blob/master/DATA621_Project_1_Rmd.html)
+
+PDF: [nbviewer](https://nbviewer.jupyter.org/github/Anth350z/Data_621/blob/master/DATA621_Project_1_Rmd.pdf)
