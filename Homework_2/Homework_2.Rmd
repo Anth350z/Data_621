@@ -1,0 +1,235 @@
+---
+title: "Data 621 - Homework 2"
+author: "Anthony Munoz"
+date: "3/15/2020"
+output:
+  pdf_document:
+    df_print: kable
+    toc: true
+    toc_depth: 2
+  html_document:
+    df_print: paged
+    toc: true
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    theme: cayman
+    highlight: pygments
+---
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+
+library(caret)
+library(dplyr)
+library(kableExtra)
+library(pROC)
+
+
+
+```
+** Overview **
+
+In this homework assignment, you will work through various classification metrics. You will be asked to create functions in R to carry out the various calculations. You will also investigate some functions in packages that will let you obtain the equivalent results. Finally, you will create graphical output that also can be used to evaluate the output of classification models, such as binary logistic regression.
+
+### Data.
+#### Download the classification output data set (attached in Blackboard to the assignment).
+
+```{r}
+
+data <- read.csv('classification-output-data.csv')
+head(data)
+
+```
+
+
+### 2. Confusion Matrix
+ The data set has three key columns we will use:
+1. class: the actual class for the observation
+2. scored.class: the predicted class for the observation (based on a threshold of 0.5)
+ 3. scored.probability: the predicted probability of success for the observation
+ 
+#### Use the table() function to get the raw confusion matrix for this scored dataset. Make sure you understand the output. In particular, do the rows represent the actual or predicted class? The columns?
+
+```{r}
+
+  table(data$scored.class,data$class)
+
+```
+
+
+
+### 3. Accuracy
+####  Write a function that takes the data set as a dataframe, with actual and predicted classifications identified, and returns the accuracy of the predictions.
+
+```{r}
+
+accuracy <- function(df){
+  
+  
+  return((sum(df$class == 1 & df$scored.class  == 1) + sum(df$class == 0 & df$scored.class  == 0)) / nrow(df)
+   )
+}
+
+accuracy(data)
+```
+
+### 4. Classification Error rate
+
+#### Write a function that takes the data set as a dataframe, with actual and predicted classifications identified, and returns the classification error rate of the predictions.
+
+
+```{r}
+
+classification.error.rate <- function(df){
+  
+  
+  return((sum(df$class == 1 & df$scored.class  == 0) + sum(df$class == 0 & df$scored.class  == 1)) / nrow(df))
+  
+}
+
+classification.error.rate(data)
+
+```
+
+
+### 5. Precision
+
+#### Write a function that takes the data set as a dataframe, with actual and predicted classifications identified, and returns the precision of the predictions.
+
+```{r}
+
+precision <- function(df){
+  
+  
+  return((sum(df$class == 1 & df$scored.class  == 1)/ (sum(df$class == 1 & df$scored.class  == 1) + sum(df$class == 0 & df$scored.class  == 1))  ))
+  
+}
+
+precision(data)
+
+```
+
+### 6. Sensitivity
+
+#### Write a function that takes the data set as a dataframe, with actual and predicted classifications identified, and returns the sensitivity of the predictions. Sensitivity is also known as recall.
+
+```{r}
+
+sensitivity <- function(df){
+  
+  
+  return((sum(df$class == 1 & df$scored.class  == 1)/ (sum(df$class == 1 & df$scored.class  == 1) + sum(df$class == 1 & df$scored.class  == 0))  ))
+  
+}
+
+
+sensitivity(data)
+```
+
+### 7. Specificity
+
+#### Write a function that takes the data set as a dataframe, with actual and predicted classifications identified, and returns the specificity of the predictions.
+
+```{r}
+specificity <- function(df){
+  
+  
+  return((sum(df$class == 0 & df$scored.class  == 0)/ (sum(df$class == 0 & df$scored.class  == 0) + sum(df$class == 0 & df$scored.class  == 1))  ))
+  
+}
+
+
+
+specificity(data)
+```
+
+
+### 8. F1 Score
+
+#### Write a function that takes the data set as a dataframe, with actual and predicted classifications identified, and returns the F1 score of the predictions.
+
+```{r}
+
+
+f1score <- function(df){
+  
+  
+  return((2 * precision(df) * sensitivity(df) / (precision(df) + sensitivity(df))))
+}
+
+
+
+f1score(data)
+```
+
+
+### 9. F! Bounds Score
+
+#### Before we move on, let’s consider a question that was asked: What are the bounds on the F1 score? Show that the F1 score will always be between 0 and 1. 
+
+#### Answer
+
+#### we can assume that sensitivity and precision will always been between 0 and 1 by then if we place them on the F1 score formula we can noticed tat the result will be between 0 and 1. by using the hint we can say that a and b are precision and sensitivity and its true that they are between 0 and 1.
+
+
+
+
+### 10. ROC Curve
+
+#### Write a function that generates an ROC curve from a data set with a true classification column (class in our example) and a probability column (scored.probability in our example). Your function should return a list that includes the plot of the ROC curve and a vector that contains the calculated area under the curve (AUC). Note that I recommend using a sequence of thresholds ranging from 0 to 1 at 0.01 intervals.
+
+
+```{r}
+ROC.Curve <- function(df){
+ plot(roc(df$class,df$scored.probability))
+}
+
+ROC.Curve(data)
+
+
+```
+
+
+### 11. Metrics Functions
+
+#### Use your created R functions and the provided classification output data set to produce all of the classification metrics discussed above.
+
+
+```{r}
+
+all.results <- function(df){
+  df.kable <- c(paste('Accuracy - ',accuracy(df)),paste('Classification Error rate -',classification.error.rate(df)),paste('Precision - ',precision(df)),paste('Sensitivity - ',sensitivity(df)),paste('Specificity - ',specificity(df)),paste('F1 Score - ',f1score(df)))
+  
+  kable(df.kable, col.names = "Results Metrics")
+}
+
+all.results(data)
+
+```
+
+
+### 12. Caret Confusion Matrix
+
+#### Investigate the caret package. In particular, consider the functions confusionMatrix, sensitivity, and specificity. Apply the functions to the data set. How do the results compare with your own functions?
+
+```{r}
+
+confusionMatrix(table(data$class,data$scored.class) , reference = data$class)
+
+
+
+```
+
+### 13. pROC Curve
+
+#### Investigate the pROC package. Use it to generate an ROC curve for the data set. How do the results compare with your own functions?
+
+```{r}
+
+plot(roc(data$class,data$scored.probability))
+
+
+
+```
+
+
