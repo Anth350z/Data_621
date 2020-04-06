@@ -1,0 +1,178 @@
+---
+title: "Data 621 - Homework 3"
+author: "Anthony Munoz"
+date: "4/5/2020"
+output:
+  html_document:
+    df_print: paged
+    toc: true
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    theme: lumen
+    highlight: pygments
+  pdf_document:
+    df_print: kable
+    toc: true
+    toc_depth: 2
+---
+```{r message=FALSE, warning=TRUE}
+library(caret)
+library(dplyr)
+library(psych)
+library(corrplot)
+library(tidyr)
+library(ggplot2)
+library(VIM)
+library(ResourceSelection)
+library(pROC)
+
+
+```
+
+## Data Exploration 
+
+```{r}
+
+train.data <- read.csv('crime-training-data_modified.csv')
+head(train.data)
+
+str(train.data)
+summary(train.data)
+```
+```{r}
+
+ggplot(stack(train.data), aes(x = ind, y = values)) + 
+  geom_boxplot() +
+  coord_cartesian(ylim = c(0, 100)) 
+
+  
+
+```
+```{r}
+
+
+pairs.panels(train.data)
+
+corrplot(cor(train.data))
+
+ggplot(gather(train.data), aes(value)) + 
+    geom_histogram(bins = 20) + 
+    facet_wrap(~key, scales = 'free')
+
+
+```
+After observing the correlation plot and variables distribution we can see they are a couple of variables that need to be addressed. we don't have missing values as it shows on the data summary, but we see some high correlation between variables (rad-tax). We also can see some skewed data on some variables.
+
+After the observation,we going to proceed with some data transformations methods and log variables in order to normalize the data for our modeling process.
+
+## Data Preparation
+
+We decided to remove the Rad variable because it's highly correlated with the Tax variable. we proceed to do the log method to the variables(lstat,nox,dis), I tried to also work with the log method to the variable ZN but I realized it transforms some fo the observation to infinity values for which then get the drop when using for modeling. Another solution for zn variable could be to add 1 to the value of zeros.
+```{r}
+data.new <- train.data
+train.data$lstat <- log(train.data$lstat)
+train.data$nox <- log(train.data$nox +1)
+train.data$dis <- log(train.data$dis)
+train.data$zn <- log(train.data$zn + 1)
+train.df <- subset( train.data, select = -rad )
+
+
+ggplot(gather(train.data), aes(value)) + 
+    geom_histogram(bins = 20) + 
+    facet_wrap(~key, scales = 'free')
+
+
+```
+After some of the transformation, we can see that some variables seem better with the perspective of the distribution on the Histogram plot.
+
+## Build Models
+### Model 1
+```{r}
+model1 <- glm(target~.,  data = train.df, family = "binomial")
+
+summary(model1)
+
+plot(model1)
+
+hoslem.test(data.new$target, fitted(model1))
+```
+
+### Model 2
+
+```{r}
+model2  <- glm(target~chas + nox + age+ dis+ tax+ medv + indus,  data =train.df, family = "binomial")
+summary(model2)
+
+plot(model2)
+
+hoslem.test(data.new$target, fitted(model2))
+```
+
+### Model 3
+
+```{r}
+
+df.tranformed <- predict(preProcess(data.new[,-13], c("BoxCox")), data.new[,-13])
+
+model3  <- glm(data.new$target~.,  data =df.tranformed, family = "binomial")
+summary(model3)
+#plot(model3)
+
+
+
+
+hoslem.test(data.new$target, fitted(model3))
+```
+
+### Model 4
+
+```{r}
+
+df.tranformed <- predict(preProcess(data.new[,-13], c("BoxCox")), data.new[,-13])
+
+model4  <- glm(data.new$target ~ nox +  dis + rad+ ptratio+age+medv,  data =df.tranformed, family = "binomial")
+summary(model4)
+plot(model4)
+
+hoslem.test(data.new$target, fitted(model4))
+
+```
+## Select Model
+
+After working with different model solutions for our data, we going to select model # 4 taking into consideration it has the lowest AIC value of 216. Model number #4 is created using the Boxcox transformation and also selecting the most significant variables.
+
+```{r}
+test.data <- as.data.frame(scale(read.csv('crime-evaluation-data_modified.csv')))
+
+df.tranformed$pred<- predict(model4, df.tranformed, interval="response")
+df.tranformed$target.pred<- ifelse(df.tranformed$pred >= 0.52, 1, 0)  
+
+confusionMatrix(factor(df.tranformed$target.pred),factor(data.new$target))
+
+
+roc(data.new$target, df.tranformed$pred, plot=TRUE, asp=NA,
+                legacy.axes=TRUE, col="red")
+
+
+
+coords(roc.value, "best")
+
+
+
+
+
+
+
+#Testing Data
+
+test.data$pred <- predict(model4, newdata = test.data, interval="response")
+test.data$target.pred<- ifelse(test.data$pred >= 0.52, 1, 0)  
+test.data
+
+write.csv(test.data,"test_data_pred.csv")
+
+```
+
+## Appendix
+
