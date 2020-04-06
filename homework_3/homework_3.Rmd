@@ -3,6 +3,10 @@ title: "Data 621 - Homework 3"
 author: "Anthony Munoz"
 date: "4/5/2020"
 output:
+  pdf_document:
+    df_print: kable
+    toc: true
+    toc_depth: 2
   html_document:
     df_print: paged
     toc: true
@@ -11,12 +15,15 @@ output:
       smooth_scroll: true
     theme: lumen
     highlight: pygments
-  pdf_document:
-    df_print: kable
-    toc: true
-    toc_depth: 2
 ---
+
+```{r include=FALSE}
+
+knitr::opts_chunk$set(echo=FALSE)
+```
+
 ```{r message=FALSE, warning=TRUE}
+
 library(caret)
 library(dplyr)
 library(psych)
@@ -151,7 +158,7 @@ df.tranformed$target.pred<- ifelse(df.tranformed$pred >= 0.52, 1, 0)
 confusionMatrix(factor(df.tranformed$target.pred),factor(data.new$target))
 
 
-roc(data.new$target, df.tranformed$pred, plot=TRUE, asp=NA,
+roc.value <- roc(data.new$target, df.tranformed$pred, plot=TRUE, asp=NA,
                 legacy.axes=TRUE, col="red")
 
 
@@ -168,11 +175,16 @@ coords(roc.value, "best")
 
 test.data$pred <- predict(model4, newdata = test.data, interval="response")
 test.data$target.pred<- ifelse(test.data$pred >= 0.52, 1, 0)  
-test.data
+head(test.data)
 
 write.csv(test.data,"test_data_pred.csv")
 
 ```
 
 ## Appendix
+Rcode: [Github](https://github.com/Anth350z/Data_621/blob/master/homework_3/homework_3.Rmd)
+
+GitHub CSV file: [Github](https://github.com/Anth350z/Data_621/blob/master/homework_3/test_data_pred.csv)
+
+
 
