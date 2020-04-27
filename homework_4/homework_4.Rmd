@@ -1,0 +1,251 @@
+---
+title: "Homework_4"
+author: "Anthony Munoz"
+date: "4/26/2020"
+output:
+  pdf_document:
+    toc: yes
+    toc_depth: '5'
+  html_document:
+    highlight: haddock
+    theme: yeti
+    toc: yes
+    toc_depth: 5
+    toc_float: yes
+---
+```{r include=FALSE}
+
+knitr::opts_chunk$set(echo=FALSE)
+```
+
+
+
+```{r message=FALSE, warning=FALSE}
+library(caret)
+library(dplyr)
+library(psych)
+library(corrplot)
+library(tidyr)
+library(ggplot2)
+library(VIM)
+library(ResourceSelection)
+library(pROC)
+library(tidyverse)
+
+```
+
+
+## Data Exploration 
+
+
+```{r}
+data <- read.csv('insurance_training_data (1).csv')
+
+str(data)
+
+summary(data)
+```
+
+
+```{r}
+
+ggplot(stack(data), aes(x = ind, y = values)) + 
+  geom_boxplot() +
+  coord_cartesian(ylim = c(0, 100)) 
+
+
+
+ggplot(gather(select_if(data,is.numeric)), aes(value)) + 
+    geom_histogram(bins = 20) + 
+    facet_wrap(~key, scales = 'free')
+
+```
+
+From the graph, we can see that just the Age variable is normally distributed. TRAVELTIME,YOJ, CAR_AGE seem distributed but they are skewed data, which will require some data transformation to fix them.
+
+## Data Preparation
+
+```{r}
+
+
+sapply(data, class)
+
+colnames(data)
+
+col <- c("HOME_VAL","OLDCLAIM","INCOME","BLUEBOOK")
+data[col] <- sapply(data[col],as.numeric)
+
+data$INCOME <- str_replace_all(data$INCOME, "[\\$,]", "")
+data$HOME_VAL <- str_replace_all(data$HOME_VAL, "[\\$,]", "")
+data$BLUEBOOK <-  str_replace_all(data$BLUEBOOK, "[\\$,]", "")
+data$OLDCLAIM <- str_replace_all(data$OLDCLAIM, "[\\$,]", "")
+
+col <- c("HOME_VAL","OLDCLAIM","INCOME","BLUEBOOK")
+data[col] <- sapply(data[col],as.numeric)
+
+Amelia::missmap(data)
+
+
+sapply(data,function(i)sum(is.na(i)))
+
+
+data$AGE[is.na(data$AGE)] <- mean(data$AGE, na.rm=T)
+data$YOJ[is.na(data$YOJ)] <- mean(data$YOJ, na.rm=T)
+data$CAR_AGE[is.na(data$CAR_AGE)] <- mean(data$CAR_AGE, na.rm=T)
+data$HOME_VAL[is.na(data$HOME_VAL)]  <- mean(data$HOME_VAL, na.rm=T)
+data$OLDCLAIM[is.na(data$OLDCLAIM)] <- mean(data$OLDCLAIM, na.rm=T)
+data$INCOME[is.na(data$INCOME)] <- mean(data$INCOME, na.rm=T)
+
+
+Amelia::missmap(data)
+
+```
+
+We can see some variables are missing some observation. in order to work with them, we decide to impute the data by the mean of those variables.
+
+```{r}
+
+train_data <- data
+
+train_data$MSTATUS <- ifelse(train_data$MSTATUS == "Yes", 1, 0)  
+
+train_data$SEX <- ifelse(train_data$SEX == 'M', 1, 0)  
+
+
+train_data$PARENT1 <- ifelse(train_data$PARENT1 == "Yes", 1, 0)  
+
+train_data$CAR_USE <- ifelse(train_data$CAR_USE == "Private", 1, 0)  
+
+train_data$RED_CAR <- ifelse(train_data$RED_CAR == "yes", 1, 0)  
+train_data$REVOKED <- ifelse(train_data$REVOKED == "Yes", 1, 0)  
+
+train_data$EDUCATION <- ifelse(train_data$EDUCATION == "<High School", 0, 1)  
+train_data$URBANICITY <- ifelse(train_data$URBANICITY == "Highly Urban/ Urban", 1, 0)  
+
+
+
+
+
+```
+
+
+## Model
+### Multiple Linear Regression Model
+
+```{r}
+## model 1
+dat <- train_data[,-1]
+
+model1 <- lm(TARGET_AMT ~., data = dat)
+
+summary(model1)
+
+plot(model1)
+
+
+## Model 2
+model2 <- lm(TARGET_AMT ~BLUEBOOK + REVOKED + MVR_PTS, data = dat)
+
+summary(model2)
+
+plot(model2)
+
+## Model 3
+
+model3 <- lm(TARGET_AMT ~ log10(BLUEBOOK)+ REVOKED + MVR_PTS, data = dat)
+
+summary(model3)
+plot(model3)
+
+```
+
+### Logistic Regression Model
+
+```{r}
+## Model 4
+
+model4 <- glm(TARGET_FLAG ~ HOME_VAL + PARENT1 + MSTATUS + SEX + EDUCATION + CAR_USE + RED_CAR +REVOKED,  data = dat, family = "binomial")
+
+summary(model4)
+
+plot(model4)
+
+## Model 5
+
+model5 <- glm(TARGET_FLAG ~ HOME_VAL + PARENT1 +  SEX + EDUCATION + CAR_USE  +REVOKED,  data = dat, family = "binomial")
+
+summary(model5)
+
+plot(model5)
+
+## Model 6
+
+
+model6 <- glm(TARGET_FLAG ~ HOME_VAL + PARENT1 +  SEX + EDUCATION + CAR_USE  +REVOKED + log10(INCOME + 1) + JOB + CLM_FREQ,  data = dat, family = "binomial")
+
+summary(model6)
+
+plot(model6)
+
+
+
+```
+
+## Select Model
+
+We going to select model number 6 from logistic regression for which gives a better AIC result.in model number 6, we are using log() function on the income variable and selecting the most significant variables.
+
+```{r}
+test.data <- read.csv('insurance-evaluation-data.csv')
+
+dat$pred<- predict(model6, dat, interval="response")
+
+dat$target.pred<- ifelse(dat$pred >= 0.5, 1, 0)  
+
+confusionMatrix(factor(dat$target.pred),factor(data$TARGET_FLAG))
+
+
+roc.value <- roc(data$TARGET_FLAG, dat$pred, plot=TRUE, asp=NA,
+                legacy.axes=TRUE, col="red")
+
+
+
+# Testing Data
+
+col <- c("HOME_VAL","OLDCLAIM","INCOME","BLUEBOOK")
+test.data[col] <- sapply(test.data[col],as.numeric)
+
+test.data$INCOME <- str_replace_all(test.data$INCOME, "[\\$,]", "")
+test.data$HOME_VAL <- str_replace_all(test.data$HOME_VAL, "[\\$,]", "")
+test.data$BLUEBOOK <-  str_replace_all(test.data$BLUEBOOK, "[\\$,]", "")
+test.data$OLDCLAIM <- str_replace_all(test.data$OLDCLAIM, "[\\$,]", "")
+
+col <- c("HOME_VAL","OLDCLAIM","INCOME","BLUEBOOK")
+test.data[col] <- sapply(test.data[col],as.numeric)
+
+
+test.data$MSTATUS <- ifelse(test.data$MSTATUS == "Yes", 1, 0)  
+test.data$SEX <- ifelse(test.data$SEX == 'M', 1, 0)  
+test.data$PARENT1 <- ifelse(test.data$PARENT1 == "Yes", 1, 0)  
+test.data$CAR_USE <- ifelse(test.data$CAR_USE == "Private", 1, 0)  
+test.data$RED_CAR <- ifelse(test.data$RED_CAR == "yes", 1, 0)  
+test.data$REVOKED <- ifelse(test.data$REVOKED == "Yes", 1, 0)  
+test.data$EDUCATION <- ifelse(test.data$EDUCATION == "<High School", 0, 1)  
+test.data$URBANICITY <- ifelse(test.data$URBANICITY == "Highly Urban/ Urban", 1, 0)  
+test.data$INCOME <- log10(as.numeric(test.data$INCOME)) + 1
+
+
+
+test.data$pred <- predict(model6, newdata = test.data, interval="response")
+test.data$target.pred<- ifelse(test.data$pred >= 0.5, 1, 0)  
+head(test.data)
+
+
+
+
+
+write.csv(test.data,"test_data_pred.csv")
+
+
+
+```
